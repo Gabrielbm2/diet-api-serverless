@@ -1,10 +1,10 @@
 import { and, eq } from "drizzle-orm";
-import { HttpResponse, HtttpRequest } from "../types/Http";
+import { HttpResponse, HttpRequest } from "../types/Http";
 import { badRequest, conflict, created } from "../utils/http";
 import z from "zod";
 import { usersTable } from "../db/schema";
 import { db } from "../db";
-import { id } from "zod/locales";
+import { hash } from "bcryptjs";
 
 const schema = z.object({
     goal: z.enum(['lose', 'maintain', 'gain']),
@@ -21,7 +21,7 @@ const schema = z.object({
 });
 
 export class SignUpController {
-    static async handle({body}: HtttpRequest): Promise<HttpResponse> {
+    static async handle({body}: HttpRequest): Promise<HttpResponse> {
 
         const { success, error, data } = schema.safeParse(body);
 
@@ -43,9 +43,12 @@ export class SignUpController {
             return conflict({error: 'This email already exists.'});
         }
 
+        const hashedPassword = await hash(data.account.password, 10);
+
         const [user] = await db.insert(usersTable).values({
             ...data,
             ...data.account,
+            password: hashedPassword,
             calories: 0,
             proteins: 0,
             carboHydrates: 0,
