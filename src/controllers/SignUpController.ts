@@ -6,6 +6,7 @@ import { usersTable } from "../db/schema";
 import { db } from "../db";
 import { hash } from "bcryptjs";
 import { signAccessTokenFor } from "../lib/jwt";
+import { calculateGoals } from "../lib/calculateGoals";
 
 const schema = z.object({
     goal: z.enum(['lose', 'maintain', 'gain']),
@@ -44,16 +45,31 @@ export class SignUpController {
             return conflict({error: 'This email already exists.'});
         }
 
+        const goals = calculateGoals({
+            activityLevel: data.activityLevel,
+            height: data.height,
+            weight: data.weight,
+            gender: data.gender,
+            birthDate: new Date(data.birthDate),
+            goal: data.goal,
+        });
+
         const hashedPassword = await hash(data.account.password, 10);
 
         const [user] = await db.insert(usersTable).values({
-            ...data,
-            ...data.account,
+            goal: data.goal,
+            gender: data.gender,
+            birthDate: data.birthDate,
+            height: data.height,
+            weight: data.weight,
+            activityLevel: data.activityLevel,
+            email: data.account.email,
+            name: data.account.name,
             password: hashedPassword,
-            calories: 0,
-            proteins: 0,
-            carboHydrates: 0,
-            fats: 0,
+            calories: goals.calories,
+            proteins: goals.proteins,
+            carboHydrates: goals.carbohydrates,
+            fats: goals.fats,
         }).returning({
             id: usersTable.id,
         });
