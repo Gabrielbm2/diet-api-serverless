@@ -9,6 +9,8 @@ provider:
   region: us-east-1
   runtime: nodejs22.x
   architecture: arm64
+  environment:
+    DATABASE_URL: ${env:DATABASE_URL}
   
 package:
   individually: true
@@ -21,6 +23,7 @@ build:
 functions:
   signin:
     handler: src/functions/signin.handler
+    timeout: 30
     events:
       - httpApi:
           path: /signin
@@ -28,6 +31,7 @@ functions:
 
   signup:
     handler: src/functions/signup.handler
+    timeout: 30
     events:
       - httpApi:
           path: /signup
