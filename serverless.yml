@@ -20,6 +20,9 @@ provider:
           Action:
             - s3:PutObject
           Resource: !Sub '${UploadsBucket.Arn}/*'
+        - Effect: Allow
+          Action: sqs:SendMessage
+          Resource: !GetAtt MealsQueue.Arn
   
 package:
   individually: true
@@ -35,6 +38,18 @@ resources:
       Type: AWS::S3::Bucket
       Properties:
         BucketName: foodiary-uploads-gabrielbm
+    MealsQueue:
+      Type: AWS::SQS::Queue
+      Properties:
+        QueueName: meals-queue
+        VisibilityTimeout: 60
+        RedrivePolicy:
+          maxReceiveCount: 1
+          deadLetterTargetArn: !GetAtt MealsDLQ.Arn
+    MealsDLQ:
+      Type: AWS::SQS::Queue
+      Properties:
+        QueueName: meals-queue-dlq
 
 functions:
   signin:
@@ -84,6 +99,22 @@ functions:
       - httpApi:
           path: /meals/{mealId}
           method: GET
+  
+  fileUploadedEvent:
+    handler: src/functions/fileUploadedEvent.handler
+    events:
+      - s3:
+          bucket: !Ref UploadsBucket
+          event: s3:ObjectCreated:*
+          existing: true
+          forceDeploy: true
+
+  processMeal:
+    handler: src/functions/processMeal.handler
+    events:
+      - sqs:
+          arn: !GetAtt MealsQueue.Arn
+          batchSize: 1
 
     
   
